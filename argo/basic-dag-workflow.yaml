@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: data-processing-workflow
+  namespace: argo
+spec:
+  entrypoint: main
+  templates:
+  - name: main
+    dag:
+      tasks:
+      - name: prepare-data
+        template: prepare-data
+      - name: process-data-a
+        template: process-data
+        dependencies: [prepare-data]
+        arguments:
+          parameters:
+          - name: type
+            value: "A"
+      - name: process-data-b
+        template: process-data
+        dependencies: [prepare-data]
+        arguments:
+          parameters:
+          - name: type
+            value: "B"
+      - name: aggregate-results
+        template: aggregate-results
+        dependencies: [process-data-a, process-data-b]
+
+  - name: prepare-data
+    container:
+      image: busybox:latest
+      command: ["sh", "-c", "echo 'Preparing data...' && sleep 5 && echo 'Data prepared'"]
+
+  - name: process-data
+    inputs:
+      parameters:
+      - name: type
+    container:
+      image: busybox:latest
+      command: ["sh", "-c", "echo 'Processing data type {{inputs.parameters.type}}...' && sleep 8 && echo 'Data {{inputs.parameters.type}} processed'"]
+
+  - name: aggregate-results
+    container:
+      image: busybox:latest
+      command: ["sh", "-c", "echo 'Aggregating results...' && sleep 3 && echo 'Results aggregated'"]

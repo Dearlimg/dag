@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: advanced-workflow
+  namespace: argo
+spec:
+  entrypoint: main
+  retryStrategy:
+    limit: 3
+    backoff:
+      duration: "1m"
+      factor: 2
+      maxDuration: "10m"
+  templates:
+  - name: main
+    dag:
+      tasks:
+      - name: task-with-timeout
+        template: task-with-timeout
+        timeout: "30m"
+      - name: task-with-retry
+        template: task-with-retry
+        retryStrategy:
+          limit: 5
+          retryPolicy: "Always"
+
+  - name: task-with-timeout
+    container:
+      image: busybox:latest
+      command: ["sh", "-c", "echo 'Long running task...' && sleep 20 && echo 'Task completed'"]
+
+  - name: task-with-retry
+    container:
+      image: busybox:latest
+      command: ["sh", "-c", "echo 'Flaky task...' && if [ $((RANDOM % 2)) -eq 0 ]; then exit 1; else echo 'Task succeeded'; fi"]
